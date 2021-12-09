@@ -1,24 +1,26 @@
 #include <Arduino.h>
 
-#define sensor 32
+#define ldr1 12
+#define ldr2 13
 
-float voltage = 0.0;
+int ldr1_read = 0;
+int ldr2_read = 0;
 
 void setup() {
-  pinMode(sensor, INPUT);
-  Serial.begin(115200);
+  Serial.begin(115200); 
+  
+  pinMode(ldr1, INPUT);
+  pinMode(ldr2, INPUT);
 }
 
 void loop() {
-  int leitura = analogRead(sensor);
-  voltage = (3.3 / 4095) * leitura;
+  ldr1_read = analogRead(ldr1);
+  ldr2_read = analogRead(ldr2);
 
-  Serial.print("PotValue: ");
-  Serial.print(leitura);
-  Serial.print(" ");
-  Serial.print("Voltage: ");
-  Serial.print(voltage);
-  Serial.println("V");
+  Serial.print("LDR 1: ");
+  Serial.print(ldr1_read);
+  Serial.print(" | LDR 2: ");
+  Serial.println(ldr2_read);
 
-  delay(50);
+  delay(500);
 }
