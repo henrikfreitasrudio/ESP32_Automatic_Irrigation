@@ -7,26 +7,23 @@
 
 #define BOARD_ID 1
 #define DHTPIN 0
-#define DHTTYPE DHT11
-// #define ldr1 12
-// #define ldr2 13    
+#define DHTTYPE DHT11   
 #define voltagePin 36
 
 #define sensor_nivel 39
-int leitura_nivel = 0;
 
 const int sensor = 32;
 
 int rele = 17;
 int rele_status;
 
-String motor_status = "";
+int level;
 
-// int ldr1_read = 0;
-// int ldr2_read = 0;
+String motor_status = "";
+String nivel;
 
 float leitura = 0.0;
-float voltage = 0.0;
+double voltage = 0.0;
 
 String LDR_quality = "";
 
@@ -42,7 +39,8 @@ typedef struct struct_message {
     float hum;
     float sensor; 
     String motor; 
-    //String solar; 
+    String level;
+    float voltage;
     int readingId;
 } struct_message;
 
@@ -56,7 +54,7 @@ const long interval = 2000;        // Interval at which to publish sensor readin
 unsigned int readingId = 0;
 
 // Insert your SSID
-constexpr char WIFI_SSID[] = "Freitas";
+constexpr char WIFI_SSID[] = "ESP32-Henrik";
 
 // Verifica a rede e obtém o canal
 int32_t getWiFiChannel(const char *ssid) {
@@ -70,21 +68,40 @@ int32_t getWiFiChannel(const char *ssid) {
   return 0;
 }
 
+String level_water(){
+  int leitura_nivel = analogRead(sensor_nivel);
+  level = (leitura_nivel / 1023) * 3.3;
+
+  if(level > 2){
+    nivel = "Baixo";
+  }
+  else if(level < 2){
+    nivel = "Normal";
+  }
+  Serial.println(nivel);
+  delay(1000);
+
+  return(nivel);
+}
+
 float measPot(){
   float sen = analogRead(sensor);
   int s = map(sen, 0, 4095, 100, 0);
   Serial.print("Leitura de umidade: ");
   Serial.println(s);
 
-  if(s > 20) {
+  if (nivel == "Baixo"){ 
+      digitalWrite(rele, LOW);
+      rele_status = 0;
+  }
+  if ((nivel == "Normal") && (s < 5)){
+      digitalWrite(rele, HIGH);
+      rele_status = 1;
+  }
+  else{
     digitalWrite(rele, LOW);
     rele_status = 0;
   }
-  else{
-    digitalWrite(rele, HIGH);
-    rele_status = 1;
-  }
-
   return s;
 }
 
@@ -100,53 +117,18 @@ String motor(){
   return motor_status;
 }
 
-// String geracao_solar(){
-//   ldr1_read = analogRead(ldr1);
-//   ldr2_read = analogRead(ldr2);
-
-//   float ldr_media = (ldr1_read + ldr2_read) / 2;
-  
-//   if(ldr_media < 1700){
-//     fflush(stdin);
-//     LDR_quality = "High";
-//   }
-//   else if((ldr_media > 1700) and (ldr_media < 3000)){
-//     LDR_quality = "Medium";
-//   }
-//   else{
-//     fflush(stdin);
-//     LDR_quality = "Low";
-//   }
-//   Serial.println(LDR_quality);
-
-//   ldr1_read = 0;
-//   ldr2_read = 0;
-
-//   return LDR_quality;
-// }
-
-float level_water(){
-  leitura_nivel = analogRead(sensor_nivel);
-  
-  int level = (leitura_nivel / 1023) * 3.3;
-  Serial.print("Leitura do nível: ");
-  Serial.println(level);
-
-  delay(1000);
-
-  return(leitura_nivel);
-}
-
 float leitura_bateria(){
+
   leitura = analogRead(voltagePin);
-  voltage = (leitura / 1023) * 4.56;
+  voltage = (leitura / 1023) * 4.86;
   Serial.print("Tensão da bateria: ");
   Serial.print(voltage);
   Serial.println("V");
-  return voltage;
+  float voltage_env = round(voltage * 10) / 10;
+
+  return voltage_env;
 }
 
-// Medições da temperatura
 float readDHTTemperature() {
   float t = dht.readTemperature();
   if (isnan(t)) {    
@@ -231,7 +213,8 @@ void loop() {
     myData.hum = readDHTHumidity();
     myData.sensor = measPot();             
     myData.motor = motor();                
-    //myData.solar = geracao_solar();           
+    myData.level = level_water();     
+    myData.voltage = leitura_bateria();
     myData.readingId = readingId++;
      
     // Enviando mensagem via ESP-NOW
